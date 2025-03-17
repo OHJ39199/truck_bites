@@ -9,8 +9,6 @@ import com.truckbites.service.GestorTruckBites;
 
 public class MainApp {
     private static final Scanner scanner = new Scanner(System.in);
-    private static final UsuarioDAO usuarioDAO = new UsuarioDAO();
-    private static final FoodTruckDAO foodTruckDAO = new FoodTruckDAO();
     public static final NotificacionDAO notificacionDAO = new NotificacionDAO();
     private static final GestorTruckBites gestor = new GestorTruckBites();
 

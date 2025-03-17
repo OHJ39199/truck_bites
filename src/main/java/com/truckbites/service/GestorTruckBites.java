@@ -12,7 +12,7 @@ import static com.truckbites.ui.MainApp.notificacionDAO;
 
 public class GestorTruckBites {
     private static Scanner scanner = null;
-    private final UsuarioDAO usuarioDAO;
+    private static UsuarioDAO usuarioDAO;
     private final FoodTruckDAO foodTruckDAO;
     private static MenuDAO menuDAO = new MenuDAO();
     private final PedidoDAO pedidoDAO;
@@ -269,4 +269,5 @@ public class GestorTruckBites {
             }
         }
     }
+
 }
