@@ -7,13 +7,14 @@ import java.sql.*;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Scanner;
+
 import static com.truckbites.ui.MainApp.notificacionDAO;
 
 
 public class GestorTruckBites {
     private static Scanner scanner = null;
     private static UsuarioDAO usuarioDAO;
-    private final FoodTruckDAO foodTruckDAO;
+    private static FoodTruckDAO foodTruckDAO;
     private static MenuDAO menuDAO = new MenuDAO();
     private final PedidoDAO pedidoDAO;
 
@@ -25,39 +26,49 @@ public class GestorTruckBites {
         this.pedidoDAO = new PedidoDAO();
     }
 
-    //listar todos los foodtrucks
-    public void listarFoodTrucks() throws SQLException {
-        List<FoodTruck> foodTrucks = foodTruckDAO.getAllFoodTrucks();
-        System.out.println("\nLista de Food Trucks:");
-        for (FoodTruck ft : foodTrucks) {
-            System.out.println("-(ID: " + ft.getId() + ")"+ ft.getNombre()  );
+    //1.listar todos los foodtrucks
+    public void listarFoodTrucks() {
+        try {
+            List<FoodTruck> foodTrucks = foodTruckDAO.getAllFoodTrucks();
+            if (foodTrucks.isEmpty()) {
+                System.out.println("\nNo hay Food Trucks registrados.");
+                return;
+            }
+            System.out.println("\nLista de Food Trucks:");
+            for (FoodTruck ft : foodTrucks) {
+                System.out.println("- " + ft.getNombre() + " (ID: " + ft.getId() + ")");
+            }
+        } catch (SQLException e) {
+            System.err.println("Error al obtener la lista de Food Trucks: " + e.getMessage());
         }
     }
 
-    // 1. Obtener food trucks cercanos
-    public static void consultarFoodTrucksCercanos() throws SQLException {
-        Scanner scanner = new Scanner(System.in);
+    //2. Obtener food trucks cercanos
+    public void consultarFoodTrucksCercanos() throws SQLException {
         System.out.print("Ingrese la localidad: ");
         String localidad = scanner.nextLine().trim();
 
         System.out.print("Ingrese la calle (opcional, presione Enter para omitir): ");
         String calle = scanner.nextLine().trim();
 
-        String sql = "SELECT f.id, f.nombre, u.localidad, u.calle, u.fecha_ini, u.fecha_fin " +
+        String sql = "SELECT DISTINCT f.id, f.nombre, u.localidad, u.calle, u.fecha_fin " +
                 "FROM FoodTruck f " +
                 "JOIN Ubicacion u ON f.id = u.food_truck_id " +
-                "WHERE u.localidad = ? " +
-                (calle.isEmpty() ? "" : "AND u.calle LIKE ? ") +
-                "AND u.fecha_ini <= NOW() AND u.fecha_fin >= NOW()";
+                "WHERE u.localidad = ? ";
+
+        if (!calle.isEmpty()) {
+            sql += "AND u.calle LIKE ? ";
+        }
 
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
 
             stmt.setString(1, localidad);
-            if (!calle.isEmpty()) {
-                stmt.setString(2, "%" + calle + "%");
-            }
+            int parameterIndex = 2;  // Start at 2 because localidad is the first parameter
 
+            if (!calle.isEmpty()) {
+                stmt.setString(parameterIndex++, "%" + calle + "%"); // Use parameterIndex and increment
+            }
             try (ResultSet rs = stmt.executeQuery()) {
                 System.out.println("\nFood trucks cercanos en " + localidad + ":");
                 boolean encontrado = false;
@@ -65,20 +76,20 @@ public class GestorTruckBites {
                     encontrado = true;
                     System.out.printf("- %s (ID: %d)%n", rs.getString("nombre"), rs.getInt("id"));
                     System.out.printf("  Ubicación: %s, %s%n", rs.getString("localidad"), rs.getString("calle"));
-                    System.out.printf("  Disponible desde: %s hasta: %s%n",
-                            rs.getTimestamp("fecha_ini").toLocalDateTime().format(DateTimeFormatter.ofPattern("dd-MM-yyyy HH:mm")),
-                            rs.getTimestamp("fecha_fin").toLocalDateTime().format(DateTimeFormatter.ofPattern("dd-MM-yyyy HH:mm")));
                     System.out.println();
                 }
                 if (!encontrado) {
                     System.out.println("No se encontraron food trucks en la ubicación especificada.");
                 }
             }
+        } catch (SQLException e) {
+            System.err.println("Error al consultar food trucks cercanos en la base de datos: " + e.getMessage()); // More specific message
+            throw e; // Re-throw so the calling method knows an error occurred
         }
     }
 
-    // 2. Listar productos menús  de un food truck
-    public static void listarMenuDiario() throws SQLException {
+    // 3. Listar productos menús  de un food truck
+    public void listarMenuDiario() throws SQLException {
         System.out.print("ID del food truck: ");
         int foodTruckId = scanner.nextInt();
 
@@ -89,8 +100,8 @@ public class GestorTruckBites {
                 menu.getPrecio()));
     }
 
-    // 3. Recuperar pedidos pendientes de preparacion o entrega para un food truck
-    public static void listarPedidosPendientes() throws SQLException {
+    // 4. Recuperar pedidos pendientes de preparacion o entrega para un food truck
+    public void listarPedidosPendientes() throws SQLException {
         System.out.print("ID del food truck: ");
         int foodTruckId = scanner.nextInt();
         scanner.nextLine(); // Consumir el salto de línea
@@ -123,8 +134,8 @@ public class GestorTruckBites {
         }
     }
 
-    // 4. Calcular ventas totales por año
-    public static void calcularVentasPeriodo() throws SQLException {
+    // 5. Calcular ventas totales por año
+    public void calcularVentasPeriodo() throws SQLException {
         System.out.print("Año para consultar ventas: ");
         int anio = scanner.nextInt();
         scanner.nextLine(); // Consumir el salto de línea
@@ -156,8 +167,8 @@ public class GestorTruckBites {
         }
     }
 
-    // 5. Usuarios con pedidos recientes
-    public static void obtenerUsuariosRecientes() throws SQLException {
+    // 6. Usuarios con pedidos recientes
+    public void obtenerUsuariosRecientes() throws SQLException {
         String sql = "SELECT DISTINCT u.* FROM Usuario u " +
                 "JOIN Pedido p ON u.id = p.usuario_id " +
                 "WHERE p.fecha_pedido >= CURDATE() - INTERVAL 7 DAY";
@@ -175,8 +186,8 @@ public class GestorTruckBites {
         }
     }
 
-    // 6. Listar notificaciones activas
-    public static void listarNotificacionesUsuario() throws SQLException {
+    // 7. Listar notificaciones activas
+    public void listarNotificacionesUsuario() throws SQLException {
         System.out.print("ID de usuario: ");
         int usuarioId = scanner.nextInt();
 
@@ -185,8 +196,8 @@ public class GestorTruckBites {
         notificaciones.forEach(n -> System.out.printf("- %s%n", n.getMensaje()));
     }
 
-    // 7. Food trucks populares
-    public static void listarFoodTrucksPopulares() throws SQLException {
+    // 8. Food trucks populares
+    public void listarFoodTrucksPopulares() throws SQLException {
         String sql = "SELECT f.nombre, COUNT(p.id) AS total_pedidos " +
                 "FROM FoodTruck f LEFT JOIN Pedido p ON f.id = p.food_truck_id " +
                 "GROUP BY f.id ORDER BY total_pedidos DESC LIMIT 5";
@@ -206,8 +217,8 @@ public class GestorTruckBites {
         }
     }
 
-    // 8. Usuarios frecuentes
-    public static void listarUsuariosFrecuentes() throws SQLException {
+    // 9. Usuarios frecuentes
+    public void listarUsuariosFrecuentes() throws SQLException {
         String sql = "SELECT u.nombre, COUNT(p.id) AS total_pedidos " +
                 "FROM Usuario u LEFT JOIN Pedido p ON u.id = p.usuario_id " +
                 "GROUP BY u.id ORDER BY total_pedidos DESC LIMIT 5";
@@ -227,8 +238,8 @@ public class GestorTruckBites {
         }
     }
 
-    // 9. Menús populares
-    public static void listarMenusPopulares() throws SQLException {
+    // 10. Menús populares
+    public void listarMenusPopulares() throws SQLException {
         String sql = "SELECT m.nombre, COUNT(*) AS total_pedidos " +
                 "FROM Menu m JOIN Pedido p ON m.food_truck_id = p.food_truck_id " +
                 "GROUP BY m.id ORDER BY total_pedidos DESC LIMIT 5";
@@ -248,8 +259,8 @@ public class GestorTruckBites {
         }
     }
 
-    // 10. Reservas mensuales
-    public static void listarReservasMensuales() throws SQLException {
+    // 11. Reservas mensuales
+    public void listarReservasMensuales() throws SQLException {
         String sql = "SELECT YEAR(fecha_pedido) AS año, MONTH(fecha_pedido) AS mes, " +
                 "f.nombre, COUNT(*) AS total_pedidos " +
                 "FROM Pedido p JOIN FoodTruck f ON p.food_truck_id = f.id " +
@@ -270,4 +281,72 @@ public class GestorTruckBites {
         }
     }
 
+    //12. muestre los pedidos entregados junto con el nombre fel foodtruck
+    public void listarPedidosEntregadosPorUsuario() throws SQLException {
+        System.out.print("id usuario: ");
+        int idU= scanner.nextInt();
+        scanner.nextLine();
+        String sql = "SELECT p.id AS pedido_id, p.fecha_pedido, p.estado, p.total, " +
+                "f.nombre AS food_truck_nombre " +
+                "FROM Pedido p " +
+                "JOIN FoodTruck f ON p.food_truck_id = f.id " +
+                "WHERE p.usuario_id = ? AND p.estado = 'entregado' " +
+                "ORDER BY p.fecha_pedido ASC";
+
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setInt(1, idU);
+            try (ResultSet rs = stmt.executeQuery()) {
+                System.out.println("\nPedidos entregados para el usuario con ID " + idU + ":");
+                boolean hayPedidos = false;
+                while (rs.next()) {
+                    hayPedidos = true;
+                    System.out.printf("- Pedido #%d de %s (%s)%n",
+                            rs.getInt("pedido_id"),
+                            rs.getString("food_truck_nombre"),
+                            rs.getTimestamp("fecha_pedido").toLocalDateTime().format(DateTimeFormatter.ofPattern("dd-MM-yyyy HH:mm")));
+                    System.out.printf("  Estado: %s, Total: %.2f€%n",
+                            rs.getString("estado"),
+                            rs.getDouble("total"));
+                    System.out.println();
+                }
+
+                if (!hayPedidos) {
+                    System.out.println("No hay pedidos entregados para este usuario.");
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("Error al listar pedidos entregados por usuario: " + e.getMessage());
+            throw e; // Re-throw to signal an error to the caller
+        }
+    }
+
+    //13. gasto medio de un usuario
+    public void calcularGastoMedioUsuario() throws SQLException {
+        System.out.print("Ingrese el ID del usuario: ");
+        int usId = scanner.nextInt();
+        scanner.nextLine();
+
+        String sql = "SELECT AVG(total) AS gasto_medio " +
+                "FROM Pedido " +
+                "WHERE usuario_id = ?";
+
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setInt(1, usId);
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    double gastoMedio = rs.getDouble("gasto_medio");
+                    System.out.printf("El gasto medio del usuario con ID %d es: %.2f€%n", usId, gastoMedio);
+                } else {
+                    System.out.printf("El gasto medio del usuario con ID %d es: 0.00€%n", usId);
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("Error al calcular el gasto medio del usuario: " + e.getMessage());
+            throw e;
+        }
+    }
 }

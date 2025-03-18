@@ -28,6 +28,8 @@ public class MainApp {
                 System.out.println("9. Menús populares");
                 System.out.println("10. Food trucks con más reservas");
                 System.out.println("11. Usuarios activos recientes");
+                System.out.println("12. Pedidos entregados a un usuario");
+                System.out.println("13. Gasto medio de un usuario");
                 System.out.println("0. Salir");
                 System.out.print("Seleccione opción: ");
 
@@ -46,6 +48,9 @@ public class MainApp {
                     case 9 -> gestor.listarMenusPopulares();
                     case 10 -> gestor.listarReservasMensuales();
                     case 11 -> gestor.obtenerUsuariosRecientes();
+                    case 12-> gestor.listarPedidosEntregadosPorUsuario();
+                    case 13-> gestor.calcularGastoMedioUsuario();
+
                 }
             } while(opcion != 0);
 

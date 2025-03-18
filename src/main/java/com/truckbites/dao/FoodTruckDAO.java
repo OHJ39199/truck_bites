@@ -26,17 +26,21 @@ public class FoodTruckDAO {
 
     public List<FoodTruck> getAllFoodTrucks() throws SQLException {
         List<FoodTruck> foodTrucks = new ArrayList<>();
-        String sql = "SELECT ft.id, ft.nombre, u.localidad " +
+        String sql = "SELECT DISTINCT ft.id, ft.nombre " +
                 "FROM FoodTruck ft " +
-                "LEFT JOIN Ubicacion u ON ft.id = u.food_truck_id " +
-                "GROUP BY ft.id";
+                "LEFT JOIN Ubicacion u ON ft.id = u.food_truck_id";
 
         try (Connection conn = DatabaseConnection.getConnection();
              Statement stmt = conn.createStatement();
              ResultSet rs = stmt.executeQuery(sql)) {
 
             while (rs.next()) {
-                foodTrucks.add(mapResultSetToFoodTruck(rs));
+                foodTrucks.add(new FoodTruck(
+                        rs.getInt("id"),
+                        rs.getString("nombre"),
+                        null,  // We're not fetching description here
+                        null   // We're not fetching propietario_id here
+                ));
             }
         }
         return foodTrucks;
@@ -120,7 +124,7 @@ public class FoodTruckDAO {
         return foodTrucks;
     }
 
-    private FoodTruck mapResultSetToFoodTruck(ResultSet rs) throws SQLException {
+    private static FoodTruck mapResultSetToFoodTruck(ResultSet rs) throws SQLException {
         return new FoodTruck(
                 rs.getInt("id"),
                 rs.getString("nombre"),
